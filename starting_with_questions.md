@@ -6,15 +6,16 @@ Answer the following questions and provide the SQL queries used to find the answ
 
 SQL Queries:
 
-SELECT country,city, SUM(total_transaction_revenue) as TotalTransactionRevenue
-FROM 
-	(SELECT DISTINCT LOWER(TRIM(country)) as Country, LOWER(TRIM(city)) as City,
+WITH cleaned_alls AS (SELECT DISTINCT fullvisitorid,LOWER(TRIM(country)) as Country, LOWER(TRIM(city)) as City,
 	ROUND(SUM(totaltransactionrevenue/1000000), 2) as total_transaction_revenue,productsku,
-	ROUND((productprice/1000000), 2) as Product_Price,productname
+	ROUND((productprice/1000000), 2) as Product_Price,productname,productquantity,productcategory
 	FROM all_sessions
-	WHERE totaltransactionrevenue IS NOT NULL AND city NOT LIKE 'not%' AND city NOT LIKE '(not%'
-	GROUP BY city, country,productsku,productprice,productname
-	ORDER BY total_transaction_revenue DESC) AS cleaned_alls
+	WHERE totaltransactionrevenue IS NOT NULL AND city NOT LIKE 'not%' AND city NOT LIKE '(not%' AND productsku LIKE 'GGO%'
+	GROUP BY city, country,productsku,productprice,productname,fullvisitorid,productquantity,productcategory
+	ORDER BY total_transaction_revenue DESC)
+
+SELECT Country,City, SUM(total_transaction_revenue) as TotalTransactionRevenue
+FROM cleaned_alls
 GROUP BY country,city
 ORDER BY TotalTransactionRevenue DESC
 
@@ -24,13 +25,19 @@ Answer: Website revenue can be traced to the following countries: united states,
 
 **Question 2: What is the average number of products ordered from visitors in each city and country?**
 
+WITH cleaned_alls AS (SELECT DISTINCT fullvisitorid,LOWER(TRIM(country)) as Country, LOWER(TRIM(city)) as City,
+	ROUND(SUM(totaltransactionrevenue/1000000), 2) as total_transaction_revenue,productsku,
+	ROUND((productprice/1000000), 2) as Product_Price,productname,productquantity,productcategory
+	FROM all_sessions
+	WHERE totaltransactionrevenue IS NOT NULL AND city NOT LIKE 'not%' AND city NOT LIKE '(not%' AND productsku LIKE 'GGO%'
+	GROUP BY city, country,productsku,productprice,productname,fullvisitorid,productquantity,productcategory
+	ORDER BY total_transaction_revenue DESC)
 
-SQL Queries:
 SELECT LOWER(TRIM(city)) as city,LOWER(TRIM(country)) as country, 
 ROUND(AVG(visitor_total_quantity), 2) as avg_products_ordered_per_visitor
 FROM (
-	SELECT fullvisitorid, city, country, SUM(productquantity) as visitor_total_quantity
-	FROM all_sessions
+	SELECT DISTINCT fullvisitorid, city, country, SUM(productquantity) as visitor_total_quantity
+	FROM cleaned_alls
 	WHERE productquantity IS NOT NULL
 	GROUP BY fullvisitorid, city, country) AS visitor_orders
 WHERE city NOT LIKE '%not%'
@@ -38,10 +45,7 @@ GROUP BY city, country
 ORDER BY avg_products_ordered_per_visitor DESC;
 
 
-Answer: Madrid Spain has the highest average ordered products however the order was never completed.
-
-
-
+Answer: average us product order amount is 1.3
 
 
 **Question 3: Is there any pattern in the types (product categories) of products ordered from visitors in each city and country?**
@@ -51,12 +55,13 @@ SQL Queries:
 
 SELECT alls.productcategory, COUNT(alls.productcategory) as number_products_in_category, alls.country
 FROM all_sessions alls
-JOIN (SELECT DISTINCT fullvisitorid, productcategory,city,country FROM all_sessions) allss
+JOIN (SELECT DISTINCT fullvisitorid, productcategory,city,country FROM all_sessions
+WHERE productcategory NOT LIKE '(not%') allss
 ON alls.productcategory = allss.productcategory
-WHERE alls.city NOT LIKE '%not%' AND alls.totaltransactionrevenue IS NOT NULL
+WHERE alls.city NOT LIKE '%not%' AND alls.totaltransactionrevenue IS NOT NULL 
+AND alls.productsku LIKE 'GGO%'
 GROUP BY alls.productcategory, alls.country
 ORDER BY alls.country, number_products_in_category DESC
-
 
 Answer:
 After reviewing the data we notice that products in the NEST categories has fewer
@@ -71,8 +76,8 @@ SQL Queries:
 
 SELECT DISTINCT productname,LOWER(TRIM(city)) as city,LOWER(TRIM(country)) as country,
 ROUND(SUM(totaltransactionrevenue / 1000000), 2) as total_product_revenue
-FROM all_sessions 
-WHERE totaltransactionrevenue IS NOT NULL AND  city NOT LIKE '%not%'
+FROM all_sessions
+WHERE totaltransactionrevenue IS NOT NULL AND city NOT LIKE 'not%' AND city NOT LIKE '(not%' AND productsku LIKE 'GGO%'
 GROUP by productname,country,city
 ORDER BY total_product_revenue DESC
 
@@ -90,10 +95,17 @@ united states are nest security products.
 
 SQL Queries:
 
+SELECT productname,alls.productsku, LOWER(TRIM(city)) as city, LOWER(TRIM(country)) as country,
+ROUND((totaltransactionrevenue/1000000),2) AS TotalTransactionRevenue,channelgrouping
+FROM all_sessions alls
+JOIN (SELECT * FROM sales_report WHERE productsku LIKE 'GGO%'AND total_ordered > 0) sr
+ON alls.productsku = sr.productsku
+WHERE city NOT LIKE 'not%' and city NOT LIKE '(not%' AND totaltransactionrevenue IS NOT NULL AND alls.productsku LIKE 'GGO%'
+ORDER BY channelgrouping
 
 
 Answer:
-
+ Showing the prevelance of NEST products making the bulk of the revenue generated and that most of the websites traffic is coming for the united states.
 
 
 

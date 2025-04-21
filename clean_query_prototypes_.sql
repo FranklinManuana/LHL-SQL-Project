@@ -28,7 +28,15 @@ NULL columns(
 Not set or not available rows in city and country columns
 */
 
-
+/*Cleaned tables */
+--all_sessions cleaned Q1
+WITH cleaned_alls AS (SELECT DISTINCT fullvisitorid,LOWER(TRIM(country)) as Country, LOWER(TRIM(city)) as City,
+	ROUND(SUM(totaltransactionrevenue/1000000), 2) as total_transaction_revenue,productsku,
+	ROUND((productprice/1000000), 2) as Product_Price,productname
+	FROM all_sessions
+	WHERE totaltransactionrevenue IS NOT NULL AND city NOT LIKE 'not%' AND city NOT LIKE '(not%' AND productsku LIKE 'GGO%'
+	GROUP BY city, country,productsku,productprice,productname,fullvisitorid
+	ORDER BY total_transaction_revenue DESC)
 
 
 /*---------------------------------------------------------------------*/
@@ -138,3 +146,5 @@ WHERE city NOT LIKE 'not%' and city NOT LIKE '(not%' AND totaltransactionrevenue
 
 
 SELECT fullvisitorid FROM all_sessions
+
+

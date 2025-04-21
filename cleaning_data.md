@@ -19,13 +19,30 @@ Queries:
 
 1.Cleaning all_sessions table for revenue related questions.
 
-(SELECT DISTINCT fullvisitorid,LOWER(TRIM(country)) as Country, LOWER(TRIM(city)) as City,
+Questions 1 & 2 Created a cleaned all_sessions CTE:
+
+WITH cleaned_alls AS (SELECT DISTINCT fullvisitorid,LOWER(TRIM(country)) as Country, LOWER(TRIM(city)) as City,
 	ROUND(SUM(totaltransactionrevenue/1000000), 2) as total_transaction_revenue,productsku,
-	ROUND((productprice/1000000), 2) as Product_Price,productname
-FROM all_sessions
+	ROUND((productprice/1000000), 2) as Product_Price,productname,productquantity,productcategory
+	FROM all_sessions
+	WHERE totaltransactionrevenue IS NOT NULL AND city NOT LIKE 'not%' AND city NOT LIKE '(not%' AND productsku LIKE 'GGO%'
+	GROUP BY city, country,productsku,productprice,productname,fullvisitorid,productquantity,productcategory
+	ORDER BY total_transaction_revenue DESC)
+	
+
+Question 2 also needed a subquery in the FROM statement to futher filter for productquantity 
+
+FROM (
+	SELECT DISTINCT fullvisitorid, city, country, SUM(productquantity) as visitor_total_quantity
+	FROM cleaned_alls
+	WHERE productquantity IS NOT NULL
+	GROUP BY fullvisitorid, city, country) AS visitor_orders
+
+Subsequent questions have different permutations columns expressed from all_sessions, however
+the following four conditions are always applied when using the all_sessions table:
+
 WHERE totaltransactionrevenue IS NOT NULL AND city NOT LIKE 'not%' AND city NOT LIKE '(not%' AND productsku LIKE 'GGO%'
-GROUP BY city, country,productsku,productprice,productname,fullvisitorid
-ORDER BY total_transaction_revenue DESC) AS cleaned_alls
+
 
 2.Cleaning the analytics table for JOINs to answer time questions:
 JOIN analytics
